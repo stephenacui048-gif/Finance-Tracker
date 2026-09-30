@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="50%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#eab308" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded rectangle -->
+  <rect width="512" height="512" rx="120" fill="url(#bgGrad)" />
+
+  <!-- Inner circle subtle ring -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="rgba(255, 255, 255, 0.1)" stroke-width="8" />
+
+  <!-- Graduation Cap Top -->
+  <g filter="url(#shadow)">
+    <!-- Mortarboard Diamond -->
+    <path d="M 256 120 L 410 185 L 256 250 L 102 185 Z" fill="#ffffff" />
+    <!-- Cap Underneath Base -->
+    <path d="M 160 215 L 160 270 Q 256 320 352 270 L 352 215 Q 256 265 160 215 Z" fill="#e2e8f0" />
+    <!-- Tassel -->
+    <path d="M 390 195 L 420 280" stroke="#fde047" stroke-width="8" stroke-linecap="round" />
+    <circle cx="420" cy="285" r="8" fill="#fde047" />
+  </g>
+
+  <!-- Wallet / Card Icon in Center Bottom -->
+  <g filter="url(#shadow)" transform="translate(136, 260)">
+    <!-- Main Wallet Body -->
+    <rect x="0" y="0" width="240" height="150" rx="28" fill="#ffffff" />
+    <!-- Wallet Flap -->
+    <path d="M 140 35 L 240 35 L 240 115 L 140 115 C 120 115 120 35 140 35 Z" fill="#047857" />
+    <!-- Gold Clasp / Coin Button -->
+    <circle cx="155" cy="75" r="14" fill="url(#goldGrad)" stroke="#ffffff" stroke-width="3" />
+    <!-- Card detail line -->
+    <rect x="25" y="45" width="80" height="14" rx="7" fill="#cbd5e1" />
+    <rect x="25" y="75" width="55" height="14" rx="7" fill="#94a3b8" />
+  </g>
+
+  <!-- Growth Sparkle / Star in Top Corner -->
+  <g fill="#fde047">
+    <path d="M 400 90 Q 400 115 425 115 Q 400 115 400 140 Q 400 115 375 115 Q 400 115 400 90 Z" />
+  </g>
+</svg>

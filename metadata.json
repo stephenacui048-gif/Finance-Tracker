@@ -1,0 +1,6 @@
+{
+  "name": "Student Finance Tracker",
+  "description": "Aplikasi pencatat keuangan pintar untuk mahasiswa Indonesia. Kelola saldo, anggaran bulanan, target tabungan, batas belanja harian, dan kesehatan finansial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Finance Tracker - Manajemen Finansial Mahasiswa</title>
+    <meta name="description" content="Aplikasi pencatat keuangan pintar untuk mahasiswa Indonesia. Kelola saldo, multi-dompet, anggaran bulanan, target tabungan, tagihan rutin, dan batas belanja harian." />
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#059669" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="FinTrack" />
+
+    <meta property="og:title" content="Student Finance Tracker - Manajemen Finansial Mahasiswa" />
+    <meta property="og:description" content="Aplikasi pencatat keuangan pintar untuk mahasiswa Indonesia. Kelola saldo, anggaran bulanan, target tabungan, batas belanja harian, dan kesehatan finansial." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/assets/index-DH8sbbMc.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Czgnqzw-.css">
+  </head>
+  <body class="bg-neutral-50 text-neutral-900 antialiased font-sans">
+    <div id="root"></div>
+    <script>
+      // Register Service Worker for PWA offline capabilities
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(
+            (reg) => console.log('PWA ServiceWorker registered successfully:', reg.scope),
+            (err) => console.warn('PWA ServiceWorker registration failed:', err)
+          );
+        });
+      }
+    </script>
+  </body>
+</html>
