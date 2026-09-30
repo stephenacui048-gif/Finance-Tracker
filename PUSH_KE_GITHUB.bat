@@ -11,6 +11,10 @@ echo.
 echo Repositori Target: https://github.com/stephenacul048-git/Finance-Tracker
 echo.
 
+:: Konfigurasi identitas git otomatis
+git config user.name "stephenacul048" >nul 2>&1
+git config user.email "stephenacul048@users.noreply.github.com" >nul 2>&1
+
 :: Inisialisasi git jika belum ada
 if not exist ".git" (
     echo [1/4] Menginisialisasi Git lokal...
