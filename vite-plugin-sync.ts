@@ -101,7 +101,8 @@ export function syncPlugin(): Plugin {
 
       server.httpServer?.on('close', () => clearInterval(heartbeatTimer));
       server.middlewares.use((req, res, next) => {
-        const url = req.url || '';
+        const rawUrl = req.url || '';
+        const url = rawUrl.startsWith('//') ? rawUrl.replace(/^\/+/, '/') : rawUrl;
 
         // CORS headers for seamless multi-device network access
         res.setHeader('Access-Control-Allow-Origin', '*');

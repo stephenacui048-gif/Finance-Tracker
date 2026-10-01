@@ -192,9 +192,9 @@ export function getEmergencyBackup(): any | null {
 export function resolveSyncBaseUrl(configuredUrl?: string): string {
   // Prefer explicit URL from settings
   if (configuredUrl && configuredUrl.trim().length > 0) {
-    let clean = configuredUrl.trim().replace(/\\+$/,'');
+    let clean = configuredUrl.trim().replace(/\/+$/, '');
     if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-      clean = 'http://' + clean;
+      clean = 'https://' + clean;
     }
     return clean;
   }
@@ -202,14 +202,14 @@ export function resolveSyncBaseUrl(configuredUrl?: string): string {
   try {
     const envUrl = (import.meta as any).env?.VITE_API_URL as string | undefined;
     if (envUrl && envUrl.trim().length > 0) {
-      let clean = envUrl.trim().replace(/\\+$/,'');
+      let clean = envUrl.trim().replace(/\/+$/, '');
       if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-        clean = 'http://' + clean;
+        clean = 'https://' + clean;
       }
       return clean;
     }
   } catch {}
-  return typeof window !== 'undefined' ? window.location.origin : '';
+  return typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : '';
 }
 
 /**

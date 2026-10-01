@@ -378,8 +378,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (parsed.gamificationProfile) {
           setGamificationProfile(parsed.gamificationProfile);
         }
-        if (parsed.activeMonth) setActiveMonth(parsed.activeMonth);
-        else setActiveMonth(getCurrentMonthString());
+        setActiveMonth(getCurrentMonthString());
         if (parsed.lastSavedAt) setLastSavedAt(parsed.lastSavedAt);
         setStorageUsageBytes(new Blob([saved || '']).size);
 
@@ -496,7 +495,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (isSyncingRef.current) return;
     try {
       isSyncingRef.current = true;
-      const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl);
+      const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl).replace(/\/+$/, '');
       const res = await fetch(`${targetUrl}/api/sync`);
       if (!res.ok) throw new Error('Server offline / network error');
       const json = await res.json();
@@ -685,7 +684,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // 12. Settings & active month
         if (serverData.settings) setSettings((prev) => ({ ...prev, ...serverData.settings }));
         if (Array.isArray(serverData.notifications)) setNotifications(serverData.notifications);
-        if (serverData.activeMonth) setActiveMonth(serverData.activeMonth);
 
         // Compute local hash
         const localHash = calculateDataHash({
@@ -753,7 +751,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Push local updates to server
   const pushToServer = useCallback(
     async (data: any) => {
-      const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl);
+      const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl).replace(/\/+$/, '');
       const localHash = calculateDataHash(data);
 
       // If user is offline, record mutation in Outbox
@@ -814,7 +812,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Integrity Check: Compare data hash between Mobile & Server
   const verifyIntegrity = useCallback(async () => {
-    const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl);
+    const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl).replace(/\/+$/, '');
     const localHash = calculateDataHash({
       transactions,
       budgets,
@@ -893,7 +891,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Real-time Server-Sent Events (SSE) listener for instantaneous push to HP & Laptop
   useEffect(() => {
-    const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl);
+    const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl).replace(/\/+$/, '');
     let eventSource: EventSource | null = null;
 
     try {
@@ -903,7 +901,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         try {
           const payload = JSON.parse(event.data);
           // If the change came from another device (HP or Laptop), pull immediately!
-          if (payload.sourceDeviceId !== deviceIdRef.current && payload.version > localVersionRef.current) {
+          if (payload.sourceDeviceId !== deviceIdRef.current) {
             pullFromServer();
           }
         } catch {
@@ -928,7 +926,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Initial connection check & background polling fallback
   useEffect(() => {
-    const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl);
+    const targetUrl = resolveSyncBaseUrl(settings?.cloudSyncUrl).replace(/\/+$/, '');
 
     // 1. Detect server network info
     fetch(`${targetUrl}/api/system/info`)
@@ -954,7 +952,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const res = await fetch(`${targetUrl}/api/sync/version`);
         if (res.ok) {
           const json = await res.json();
-          if (json.success && json.version > localVersionRef.current) {
+          if (json.success && (json.version !== localVersionRef.current || json.hash !== syncState.dataHash)) {
             pullFromServer();
           }
         }
@@ -964,7 +962,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [settings?.cloudSyncUrl, pullFromServer]);
+  }, [settings?.cloudSyncUrl, pullFromServer, syncState.dataHash]);
 
   // Save to local storage on changes and push to server
   useEffect(() => {
@@ -1209,6 +1207,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     setTransactions((prev) => [newTx, ...prev]);
 
+    // Ensure activeMonth matches transaction's month so it is immediately visible in the list
+    const txMonth = newTx.date ? newTx.date.substring(0, 7) : '';
+    if (txMonth && txMonth !== activeMonth) {
+      setActiveMonth(txMonth);
+    }
+
     // Check if this expense pushes any category over 90%
     if (newTx.type === 'expense') {
       const budget = budgets.find((b) => b.category === newTx.category);
@@ -1235,6 +1239,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
     );
+    if (updates.date) {
+      const updMonth = updates.date.substring(0, 7);
+      if (updMonth && updMonth !== activeMonth) {
+        setActiveMonth(updMonth);
+      }
+    }
   };
 
   const deleteTransaction = (id: string) => {

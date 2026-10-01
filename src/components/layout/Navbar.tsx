@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { Plus, Bell, ChevronLeft, ChevronRight, Wallet, WifiOff, HardDrive, Smartphone } from 'lucide-react';
-import { formatIDR } from '../../utils/formatters';
+import { formatIDR, getCurrentMonthString } from '../../utils/formatters';
 import { PwaInstallButton } from '../common/PwaInstallButton';
 import { AndroidConnectModal } from '../modals/AndroidConnectModal';
 import { SyncMonitorModal } from '../modals/SyncMonitorModal';
@@ -71,6 +71,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickAdd, onOpenNotificati
         >
           <ChevronRight className="w-4 h-4" />
         </button>
+        {activeMonth !== getCurrentMonthString() && (
+          <button
+            onClick={() => setActiveMonth(getCurrentMonthString())}
+            className="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+            title="Kembali ke bulan berjalan saat ini"
+          >
+            Bulan Ini
+          </button>
+        )}
       </div>
 
       {/* Zone 3: Primary Actions */}
