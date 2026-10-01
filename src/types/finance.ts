@@ -48,6 +48,7 @@ export interface Account {
   type: AccountType;
   balance: number;
   initialBalance?: number;
+  updatedAt?: string;
   accountNumber?: string;
   color?: string;
   icon?: string;
@@ -384,4 +385,3 @@ export interface GamificationProfile {
   badges: GamificationBadge[];
   quests: GamificationQuest[];
 }
-

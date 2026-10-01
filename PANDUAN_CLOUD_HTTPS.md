@@ -27,9 +27,9 @@ Jika Anda ingin langsung menggunakan link HTTPS aman di HP sekarang juga tanpa p
 
 ---
 
-## ☁️ OPSI 2: Deploy Permanen di Cloud 24/7 Gratis (Tanpa Perlu Laptop Menyala)
+## ☁️ OPSI 2: Deploy di Cloud (Tanpa Perlu Laptop Menyala)
 
-Jika Anda ingin aplikasi ini **selalu aktif 24 jam sehari di internet** dan tersimpan di server cloud (sehingga laptop bisa dimatikan kapan saja dan data tetap aman), Anda bisa mendeploy-nya secara gratis di **Render.com** (atau Railway / Fly.io).
+Render dapat menjalankan aplikasi tanpa laptop Anda menyala. Namun, filesystem layanan Render bersifat sementara secara default. Database aplikasi berupa file `finance_db.json`, sehingga layanan Free cocok untuk pratinjau tetapi tidak menjamin data cloud bertahan setelah restart atau deploy. Untuk penyimpanan server yang bertahan, gunakan database terkelola atau layanan berbayar dengan persistent disk.
 
 Kami telah menyiapkan file konfigurasi siap pakai:
 - `server.js` (Server backend Express + Realtime SSE Stream)
@@ -37,7 +37,7 @@ Kami telah menyiapkan file konfigurasi siap pakai:
 - `Dockerfile` (Container standar industri)
 - `dist/` (Bundle frontend yang sudah teroptimasi)
 
-### Langkah Mudah Deploy ke Render.com (Gratis 100%):
+### Deploy ke Render.com
 
 1. **Unggah Folder Proyek ini ke GitHub**:
    - Buat akun gratis di [GitHub.com](https://github.com) jika belum punya.
@@ -56,10 +56,15 @@ Kami telah menyiapkan file konfigurasi siap pakai:
    - **Environment**: `Node`
    - **Build Command**: `npm install && npm run build`
    - **Start Command**: `npm start`
-   - **Plan**: Pilih **Free** ($0 / bulan).
+   - Pilih paket sesuai kebutuhan. Paket Free dapat dipakai untuk pratinjau, tetapi tidak menyediakan persistent disk.
    - Klik tombol **"Create Web Service"**.
 
-5. **Selesai! Link Cloud HTTPS Anda Siap**:
+5. **Aktifkan penyimpanan persisten untuk data cloud**:
+   - Pada halaman layanan Render, tambahkan persistent disk dan gunakan mount path `/var/data`.
+   - Tambahkan environment variable `DATA_DIR=/var/data`.
+   - Persistent disk tersedia untuk layanan berbayar; penambahannya dapat menimbulkan biaya.
+
+6. **Selesai! Link Cloud HTTPS Anda Siap**:
    - Dalam 2-3 menit, Render akan memberikan Anda tautan permanen HTTPS resmi seperti:
      ```
      https://fintrack-mahasiswa.onrender.com
@@ -69,8 +74,9 @@ Kami telah menyiapkan file konfigurasi siap pakai:
 
 ---
 
-## 🛡️ Keamanan & Integritas Data
+## 🛡️ Penyimpanan & Integritas Data
 
-- **Penyimpanan Ganda (Local + Cloud)**: Data tersimpan aman di perangkat Anda (`localStorage`) dan di cloud (`finance_db.json`).
+- **Penyimpanan lokal**: Data disimpan di browser (`localStorage`) pada perangkat yang digunakan.
+- **Penyimpanan cloud**: Data server disimpan dalam `finance_db.json`. File ini bertahan melewati restart hanya jika `DATA_DIR` diarahkan ke persistent disk atau storage persisten lain.
 - **Offline-First Resilience**: Jika internet Anda tiba-tiba terputus di HP saat mencatat pengeluaran, FinTrack akan menyimpannya ke antrean lokal (*Outbox*) dan otomatis mengirimkannya begitu koneksi internet terhubung kembali.
 - **Non-Destructive Union Merge**: Sistem FinTrack dirancang agar tidak pernah menghapus data lama secara tidak sengaja saat dua perangkat melakukan update bersamaan.
