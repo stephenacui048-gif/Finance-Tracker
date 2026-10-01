@@ -70,6 +70,7 @@ import {
   calculateEmotionalSpending,
   CategoryBudgetStatus,
   calculateAccountBalances,
+  pinTransactionAccount,
   getRecurringReminders,
   RecurringReminderStatus,
 } from '../utils/calculations';
@@ -226,6 +227,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [settings, setSettings] = useState<UserSettings>(INITIAL_USER_SETTINGS);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
+  const accountsRef = useRef<Account[]>(INITIAL_ACCOUNTS);
+  accountsRef.current = accounts;
   const [semesterBudgets, setSemesterBudgets] = useState<SemesterBudget[]>([]);
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
   const [campusBills, setCampusBills] = useState<CampusBill[]>([]);
@@ -317,11 +320,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       if (parsed) {
+        const loadedAccounts =
+          Array.isArray(parsed.accounts) && parsed.accounts.length > 0
+            ? parsed.accounts as Account[]
+            : INITIAL_ACCOUNTS;
         if (parsed.transactions) {
           const cleanTx = parsed.transactions.filter(
             (t: Transaction) => !t.id.startsWith('tx_demo_')
-          );
+          ).map((t: Transaction) => pinTransactionAccount(t, loadedAccounts));
           setTransactions(cleanTx);
+          parsed.transactions = cleanTx;
         }
         if (parsed.budgets) setBudgets(parsed.budgets);
         if (parsed.savingGoals) {
@@ -346,11 +354,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           );
           setNotifications(cleanNotifs);
         }
-        if (parsed.accounts && Array.isArray(parsed.accounts) && parsed.accounts.length > 0) {
-          setAccounts(parsed.accounts);
-        } else {
-          setAccounts(INITIAL_ACCOUNTS);
-        }
+        setAccounts(loadedAccounts);
+        parsed.accounts = loadedAccounts;
         const tombstoneSet = new Set(getTombstones());
         if (parsed.semesterBudgets && Array.isArray(parsed.semesterBudgets)) {
           setSemesterBudgets(parsed.semesterBudgets.filter((s: SemesterBudget) => !tombstoneSet.has(s.id) && s.id !== 'sem_1'));
@@ -433,7 +438,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           lastSavedSerializedRef.current = serialized;
           skipNextPushRef.current = true;
 
-          if (parsed.transactions) setTransactions(parsed.transactions);
+          if (parsed.transactions && Array.isArray(parsed.transactions)) {
+            const syncedAccounts = Array.isArray(parsed.accounts) ? parsed.accounts : accountsRef.current;
+            setTransactions(parsed.transactions.map((t: Transaction) => pinTransactionAccount(t, syncedAccounts)));
+          }
           if (parsed.budgets) setBudgets(parsed.budgets);
           if (parsed.savingGoals) setSavingGoals(parsed.savingGoals);
           if (parsed.recurring) setRecurring(parsed.recurring);
@@ -548,7 +556,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
               txMap.set(t.id, t);
             }
           });
-          (serverData.transactions || []).forEach((t: Transaction) => {
+          (serverData.transactions || []).forEach((rawTransaction: Transaction) => {
+            const t = pinTransactionAccount(rawTransaction, accountsRef.current);
             if (t && t.id && !t.id.startsWith('tx_demo_') && !tombstoneSet.has(t.id)) {
               const existing = txMap.get(t.id);
               if (!existing) {
@@ -565,7 +574,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           return Array.from(txMap.values());
         });
 
-        // 2. Accounts: Non-destructive union merge (NEVER ALLOW EMPTY WALLETS)
+        // 2. Accounts: keep the newest version when the same wallet exists on both devices.
         setAccounts((prevAccounts) => {
           const accMap = new Map<string, Account>();
           const base = (prevAccounts && prevAccounts.length > 0) ? prevAccounts : INITIAL_ACCOUNTS;
@@ -573,7 +582,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if (a && a.id && !tombstoneSet.has(a.id)) accMap.set(a.id, a);
           });
           (serverData.accounts || []).forEach((a: Account) => {
-            if (a && a.id && !tombstoneSet.has(a.id)) accMap.set(a.id, a);
+            if (!a || !a.id || tombstoneSet.has(a.id)) return;
+            const local = accMap.get(a.id);
+            const localUpdated = Date.parse(local?.updatedAt || local?.createdAt || '') || 0;
+            const remoteUpdated = Date.parse(a.updatedAt || a.createdAt || '') || 0;
+            if (!local || remoteUpdated >= localUpdated) accMap.set(a.id, a);
           });
           const result = Array.from(accMap.values());
           return result.length > 0 ? result : INITIAL_ACCOUNTS;
@@ -1205,6 +1218,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       createdAt: new Date().toISOString(),
     };
+    Object.assign(newTx, pinTransactionAccount(newTx, accountsRef.current));
     setTransactions((prev) => [newTx, ...prev]);
 
     // Ensure activeMonth matches transaction's month so it is immediately visible in the list
@@ -1330,16 +1344,33 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Account / Wallet Actions
   const addAccount = (account: Omit<Account, 'id' | 'createdAt'>) => {
+    const now = new Date().toISOString();
     const newAccount: Account = {
       ...account,
       id: `acc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt: now.slice(0, 10),
+      updatedAt: now,
     };
-    setAccounts((prev) => [...prev, newAccount]);
+    setAccounts((prev) => [
+      ...prev.map((existing) => account.isDefault
+        ? { ...existing, isDefault: false, updatedAt: now }
+        : existing),
+      newAccount,
+    ]);
   };
 
   const updateAccount = (id: string, updates: Partial<Account>) => {
-    setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+    const updatedAt = new Date().toISOString();
+    setAccounts((prev) => prev.map((a) => {
+      const isBeingUpdated = a.id === id;
+      const defaultChanged = updates.isDefault && a.isDefault !== (a.id === id);
+      return {
+        ...a,
+        ...(isBeingUpdated ? updates : {}),
+        ...(updates.isDefault ? { isDefault: a.id === id } : {}),
+        ...(isBeingUpdated || defaultChanged ? { updatedAt } : {}),
+      };
+    }));
   };
 
   const deleteAccount = (id: string) => {

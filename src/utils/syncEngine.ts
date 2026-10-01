@@ -36,8 +36,8 @@ export function calculateDataHash(payload: {
   splitBills?: SplitBill[];
 }): string {
   try {
-    const txIds = (payload.transactions || []).map((t) => `${t.id}:${t.amount}:${t.date}`).sort().join('|');
-    const accState = (payload.accounts || []).map((a) => `${a.id}:${a.balance}`).sort().join('|');
+    const txIds = (payload.transactions || []).map((t) => `${t.id}:${t.amount}:${t.date}:${t.accountId || ''}:${t.fromAccountId || ''}:${t.toAccountId || ''}`).sort().join('|');
+    const accState = (payload.accounts || []).map((a) => `${a.id}:${a.name}:${a.type}:${a.balance}:${a.initialBalance ?? ''}:${a.isDefault ? 1 : 0}:${a.updatedAt || ''}`).sort().join('|');
     const budgetState = (payload.budgets || []).map((b) => `${b.category}:${b.monthlyLimit}`).sort().join('|');
     const goalsState = (payload.savingGoals || []).map((g) => `${g.id}:${g.currentAmount}`).sort().join('|');
     const debtsState = (payload.debts || []).map((d) => `${d.id}:${d.remainingAmount}`).sort().join('|');

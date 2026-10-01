@@ -11,7 +11,9 @@ const app = express();
 const PORT = parseInt(String(process.env.PORT || '').trim(), 10) || 3000;
 
 // Data directory & database file location
-const dataDir = path.resolve(__dirname, 'data');
+const dataDir = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.resolve(__dirname, 'data');
 const dbFile = path.resolve(dataDir, 'finance_db.json');
 const backupFile = path.resolve(dataDir, 'finance_db.backup.json');
 
@@ -25,8 +27,8 @@ const sseClients = new Set();
 // Deterministic 32-bit FNV-1a hash
 function computeHash(data) {
   try {
-    const txIds = (data?.transactions || []).map((t) => `${t.id}:${t.amount}:${t.date}`).sort().join('|');
-    const accState = (data?.accounts || []).map((a) => `${a.id}:${a.balance}`).sort().join('|');
+    const txIds = (data?.transactions || []).map((t) => `${t.id}:${t.amount}:${t.date}:${t.accountId || ''}:${t.fromAccountId || ''}:${t.toAccountId || ''}`).sort().join('|');
+    const accState = (data?.accounts || []).map((a) => `${a.id}:${a.name}:${a.type}:${a.balance}:${a.initialBalance ?? ''}:${a.isDefault ? 1 : 0}:${a.updatedAt || ''}`).sort().join('|');
     const budgetState = (data?.budgets || []).map((b) => `${b.category}:${b.monthlyLimit}`).sort().join('|');
     const goalsState = (data?.savingGoals || []).map((g) => `${g.id}:${g.currentAmount}`).sort().join('|');
     const debtsState = (data?.debts || []).map((d) => `${d.id}:${d.remainingAmount}`).sort().join('|');
@@ -277,7 +279,11 @@ app.post('/api/sync', (req, res) => {
         if (a && a.id && !tombstoneSet.has(a.id)) accMap.set(a.id, a);
       });
       (payload.accounts || []).forEach((a) => {
-        if (a && a.id && !tombstoneSet.has(a.id)) accMap.set(a.id, a);
+        if (!a || !a.id || tombstoneSet.has(a.id)) return;
+        const saved = accMap.get(a.id);
+        const savedUpdated = Date.parse(saved?.updatedAt || saved?.createdAt || '') || 0;
+        const incomingUpdated = Date.parse(a.updatedAt || a.createdAt || '') || 0;
+        if (!saved || incomingUpdated >= savedUpdated) accMap.set(a.id, a);
       });
       let finalAccounts = Array.from(accMap.values());
       if (finalAccounts.length === 0 && Array.isArray(existing.accounts) && existing.accounts.length > 0) {

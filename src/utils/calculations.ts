@@ -10,6 +10,33 @@ import {
   Account,
 } from '../types/finance';
 
+/** Pins a legacy transaction to its matching account before the wallet list changes. */
+export function pinTransactionAccount(
+  transaction: Transaction,
+  accounts: Account[]
+): Transaction {
+  if (transaction.type === 'transfer' || !accounts.length) return transaction;
+  if (transaction.accountId && accounts.some((account) => account.id === transaction.accountId)) {
+    return transaction;
+  }
+  const defaultAcc = accounts.find((account) => account.isDefault) || accounts[0];
+  const byType = (type: Account['type']) => accounts.find((account) => account.type === type);
+  const byName = (needle: string) => accounts.find((account) => account.name.toLowerCase().includes(needle));
+
+  let account: Account | undefined;
+  switch (transaction.paymentMethod) {
+    case 'Tunai': account = byType('cash'); break;
+    case 'Transfer Bank':
+    case 'Kartu Debit': account = byType('bank'); break;
+    case 'GoPay': account = byName('gopay'); break;
+    case 'ShopeePay': account = byName('shopee'); break;
+    case 'DANA': account = byName('dana'); break;
+    case 'OVO': account = byName('ovo'); break;
+  }
+
+  return { ...transaction, accountId: (account || defaultAcc).id };
+}
+
 /**
  * Calculates real-time balances for each account/wallet based on transactions and transfers.
  */
@@ -25,38 +52,6 @@ export function calculateAccountBalances(
     balanceMap.set(acc.id, acc.initialBalance ?? acc.balance ?? 0);
   });
 
-  const defaultAcc = accounts.find((a) => a.isDefault) || accounts[0];
-
-  // Helper to match transaction to account if accountId is missing
-  const resolveAccountId = (t: Transaction): string => {
-    if (t.accountId && balanceMap.has(t.accountId)) return t.accountId;
-    if (t.paymentMethod === 'Tunai') {
-      const cash = accounts.find((a) => a.type === 'cash');
-      if (cash) return cash.id;
-    }
-    if (t.paymentMethod === 'Transfer Bank' || t.paymentMethod === 'Kartu Debit') {
-      const bank = accounts.find((a) => a.type === 'bank');
-      if (bank) return bank.id;
-    }
-    if (t.paymentMethod === 'GoPay') {
-      const gopay = accounts.find((a) => a.name.toLowerCase().includes('gopay'));
-      if (gopay) return gopay.id;
-    }
-    if (t.paymentMethod === 'ShopeePay') {
-      const sp = accounts.find((a) => a.name.toLowerCase().includes('shopee'));
-      if (sp) return sp.id;
-    }
-    if (t.paymentMethod === 'DANA') {
-      const dana = accounts.find((a) => a.name.toLowerCase().includes('dana'));
-      if (dana) return dana.id;
-    }
-    if (t.paymentMethod === 'OVO') {
-      const ovo = accounts.find((a) => a.name.toLowerCase().includes('ovo'));
-      if (ovo) return ovo.id;
-    }
-    return defaultAcc ? defaultAcc.id : accounts[0].id;
-  };
-
   // Replay transactions
   for (const t of transactions) {
     if (t.type === 'transfer') {
@@ -67,7 +62,8 @@ export function calculateAccountBalances(
         balanceMap.set(t.toAccountId, (balanceMap.get(t.toAccountId) || 0) + t.amount);
       }
     } else {
-      const accId = resolveAccountId(t);
+      const accId = pinTransactionAccount(t, accounts).accountId;
+      if (!accId || !balanceMap.has(accId)) continue;
       const current = balanceMap.get(accId) || 0;
       if (t.type === 'income') {
         balanceMap.set(accId, current + t.amount);
@@ -936,4 +932,3 @@ export function calculateEmotionalSpending(
     wastePercentage,
   };
 }
-

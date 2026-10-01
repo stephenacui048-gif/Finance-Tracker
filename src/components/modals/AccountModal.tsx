@@ -29,7 +29,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     if (editingAccount) {
       setName(editingAccount.name);
       setType(editingAccount.type);
-      setBalanceStr(String(editingAccount.balance));
+      setBalanceStr(String(editingAccount.initialBalance ?? editingAccount.balance));
       setAccountNumber(editingAccount.accountNumber || '');
       setColor(editingAccount.color || '#2563eb');
       setIsDefault(!!editingAccount.isDefault);
