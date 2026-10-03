@@ -714,14 +714,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
 
         // Clear outbox queue if all synced
-        clearAllOutboxMutations();
-
         setSyncState((prev) => ({
           ...prev,
-          status: 'synced',
+          status: getOutboxQueue().length > 0 ? 'pending' : 'synced',
           version: serverData.version || 1,
           dataHash: localHash,
-          outboxCount: 0,
+          outboxCount: getOutboxQueue().length,
           errorMessage: null,
           lastSyncedAt: new Date(),
         }));
@@ -748,8 +746,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           status: 'synced',
           lastSyncedAt: new Date(),
         }));
-      }
-    } catch (err: any) {
+          return true;
+        }
+        throw new Error('Server tidak mengonfirmasi sinkronisasi');
+      } catch (err: any) {
       setSyncState((prev) => ({
         ...prev,
         status: 'offline',
@@ -793,8 +793,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }),
         });
 
-        if (!res.ok) throw new Error('Gagal mengirim ke server');
-        const json = await res.json();
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || `Server menolak sinkronisasi (HTTP ${res.status})`);
+        }
 
         if (json.success) {
           localVersionRef.current = json.version;
@@ -818,10 +820,35 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           outboxCount: getOutboxQueue().length,
           dataHash: localHash,
         }));
+        return false;
       }
     },
     [settings?.cloudSyncUrl]
   );
+
+  const syncNow = useCallback(async () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) {
+      await pullFromServer();
+      return;
+    }
+
+    let localData: any;
+    try {
+      localData = JSON.parse(saved);
+    } catch {
+      setSyncState((prev) => ({
+        ...prev,
+        status: 'pending',
+        errorMessage: 'Data lokal tidak dapat dibaca. Ekspor cadangan sebelum mencoba lagi.',
+        outboxCount: getOutboxQueue().length,
+      }));
+      return;
+    }
+
+    const uploaded = await pushToServer(localData);
+    if (uploaded) await pullFromServer();
+  }, [pullFromServer, pushToServer]);
 
   // Integrity Check: Compare data hash between Mobile & Server
   const verifyIntegrity = useCallback(async () => {
@@ -894,12 +921,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     () => ({
       ...syncState,
       isOnline,
-      syncNow: pullFromServer,
+      syncNow,
       verifyIntegrity,
       setCustomServerUrl,
       clearOutbox,
     }),
-    [syncState, isOnline, pullFromServer, verifyIntegrity, setCustomServerUrl, clearOutbox]
+    [syncState, isOnline, syncNow, verifyIntegrity, setCustomServerUrl, clearOutbox]
   );
 
   // Real-time Server-Sent Events (SSE) listener for instantaneous push to HP & Laptop
