@@ -126,8 +126,10 @@ export const SettingsView: React.FC = () => {
       target = target.replace(/\/+$/, '');
 
       const res = await fetch(`${target}/api/sync/version`);
-      if (!res.ok) throw new Error(`Status ${res.status}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `HTTP ${res.status}: server sync belum siap`);
+      }
       if (data.success) {
         setTestResult({
           success: true,
@@ -679,7 +681,7 @@ export const SettingsView: React.FC = () => {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
-                Terdapat <strong>{syncStatus.outboxCount} mutasi</strong> dicatat saat offline. Sistem otomatis mengirimnya saat jaringan stabil.
+                Terdapat <strong>{syncStatus.outboxCount} mutasi</strong> menunggu dikirim ke server. Mutasi tetap tersimpan di perangkat sampai server mengonfirmasi penerimaan.
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -696,6 +698,12 @@ export const SettingsView: React.FC = () => {
                 Bersihkan
               </button>
             </div>
+          </div>
+        )}
+
+        {syncStatus.errorMessage && (
+          <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800">
+            Sinkronisasi gagal: {syncStatus.errorMessage}. Data lokal dan antrean tetap tersimpan.
           </div>
         )}
 
