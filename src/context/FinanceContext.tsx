@@ -746,10 +746,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           status: 'synced',
           lastSyncedAt: new Date(),
         }));
-          return true;
-        }
-        throw new Error('Server tidak mengonfirmasi sinkronisasi');
-      } catch (err: any) {
+      }
+    } catch (err: any) {
       setSyncState((prev) => ({
         ...prev,
         status: 'offline',
@@ -776,7 +774,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           outboxCount: getOutboxQueue().length,
           dataHash: localHash,
         }));
-        return;
+        return false;
       }
 
       try {
@@ -810,7 +808,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             errorMessage: null,
             lastSyncedAt: new Date(),
           }));
+          return true;
         }
+        throw new Error('Server tidak mengonfirmasi sinkronisasi');
       } catch (err: any) {
         enqueueOutboxMutation('batch', 'sync_all', data);
         setSyncState((prev) => ({
